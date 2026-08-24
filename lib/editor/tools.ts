@@ -59,15 +59,17 @@ export const TOOL_REGISTRY = new Map<string, ToolDefinition>(ADJUSTMENT_KEYS.map
 
 const maskCreate: ToolDefinition = {
   name: 'mask.create', description: 'Tạo vùng chọn không phá hủy với tọa độ chuẩn hóa.',
-  inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'ID ổn định do AI hoặc UI cấp' }, type: { type: 'string', description: 'brush, radial hoặc linear' }, name: { type: 'string', description: 'Tên vùng chọn' } }, required: ['type'], additionalProperties: false },
+  inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'ID ổn định do AI hoặc UI cấp' }, type: { type: 'string', description: 'brush, radial, linear hoặc semantic' }, name: { type: 'string', description: 'Tên vùng chọn' }, geometry: { type: 'object', description: 'Hình học chuẩn hóa 0–1' }, feather: { type: 'number', minimum: 0, maximum: 1 } }, required: ['type'], additionalProperties: false },
   preview: applyCreateMask, execute: applyCreateMask, describe: (command) => `Tạo mask ${command.parameters.type}`,
 };
 async function applyCreateMask(document: EditorDocument, command: EditCommand): Promise<ToolResult> {
   if (command.target.type !== 'document') throw new Error('mask.create phải nhắm vào document.');
   const type = command.parameters.type;
-  if (!['brush', 'radial', 'linear'].includes(String(type))) throw new Error('Mask type phải là brush, radial hoặc linear.');
+  if (!['brush', 'radial', 'linear', 'semantic'].includes(String(type))) throw new Error('Mask type không hợp lệ.');
   const mask = createMask(type as MaskType, typeof command.parameters.name === 'string' ? command.parameters.name : undefined);
   if (typeof command.parameters.id === 'string') mask.id = command.parameters.id;
+  if (command.parameters.geometry && typeof command.parameters.geometry === 'object' && !Array.isArray(command.parameters.geometry)) mask.geometry = command.parameters.geometry;
+  if (typeof command.parameters.feather === 'number') mask.feather = Math.max(0, Math.min(1, command.parameters.feather));
   return { document: { ...document, masks: [...document.masks, mask], updatedAt: new Date().toISOString() }, description: `Tạo ${mask.name}` };
 }
 
@@ -92,6 +94,8 @@ const maskDelete: ToolDefinition = {
 async function applyDeleteMask(document:EditorDocument,command:EditCommand):Promise<ToolResult>{if(command.target.type!=='mask'||!command.target.id)throw new Error('mask.delete cần target mask.');if(!document.masks.some(mask=>mask.id===command.target.id))throw new Error(`Không tìm thấy mask “${command.target.id}”.`);return{document:{...document,masks:document.masks.filter(mask=>mask.id!==command.target.id),updatedAt:new Date().toISOString()},description:'Đã xóa vùng chọn'};}
 
 TOOL_REGISTRY.set(maskCreate.name,maskCreate); TOOL_REGISTRY.set(maskUpdate.name,maskUpdate); TOOL_REGISTRY.set(maskDelete.name,maskDelete);
+
+TOOL_REGISTRY.set('mask.createSemantic',{...maskCreate,name:'mask.createSemantic',description:'Tạo vùng chọn semantic do AI nhận diện bằng polygon chuẩn hóa.'});
 
 export function listToolContracts() {
   return [...TOOL_REGISTRY.values()].map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));

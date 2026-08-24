@@ -27,6 +27,15 @@ describe('command dispatcher',()=>{
     expect(adjusted.document.adjustments.exposure).toBe(0);
     expect(adjusted.document.masks[0].adjustments.exposure).toBe(.4);
   });
+  it('AI có thể tạo semantic mask rồi chỉnh riêng vùng trong cùng plan',async()=>{
+    const created=await runCommands(createDocument('ai.jpg'),[
+      {...command('mask.createSemantic',0,'ai'),parameters:{id:'sky',type:'semantic',name:'Bầu trời',geometry:{semanticLabel:'sky',polygon:[{x:0,y:0},{x:1,y:0},{x:1,y:.4},{x:0,y:.4}]},feather:.1}},
+      {...command('adjust.saturation',15,'ai'),target:{type:'mask',id:'sky'}},
+    ]);
+    expect(created.document.masks[0].type).toBe('semantic');
+    expect(created.document.masks[0].geometry.polygon).toHaveLength(4);
+    expect(created.document.masks[0].adjustments.saturation).toBe(15);
+  });
 });
 
 describe('AI plan và project',()=>{

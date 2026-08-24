@@ -16,6 +16,8 @@ OpenPhoto sử dụng kiến trúc command-first: thao tác từ giao diện, pr
 - Mask engine nhiều vùng với brush, radial và linear gradient
 - Mỗi mask có đủ 12 thông số chỉnh sửa, feather, opacity, invert và bật/tắt
 - AI có thể tạo mask qua `mask.create`, cập nhật qua `mask.update` và dùng mọi `adjust.*` với target mask
+- AI Vision thật qua Next.js API: gửi preview thu nhỏ, tạo `EditPlan`, preview và chỉ commit sau khi duyệt
+- Semantic mask dạng polygon chuẩn hóa cho subject, sky, background, face hoặc vùng AI nhận diện
 - Project schema v2; project v1 được migrate tự động
 
 ## Chạy local
@@ -26,3 +28,11 @@ npm run dev
 ```
 
 Mở [http://localhost:3000](http://localhost:3000).
+
+Tạo `.env.local` để bật AI:
+
+```bash
+OPENAI_API_KEY=your_api_key
+# Tùy chọn, mặc định là gpt-4o
+OPENAI_MODEL=gpt-4o
+```

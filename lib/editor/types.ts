@@ -8,7 +8,7 @@ export type Adjustments = Record<AdjustmentKey, number>;
 export type CommandOrigin = 'user' | 'preset' | 'ai';
 export type JsonValue = number | string | boolean | null | JsonValue[] | { [key: string]: JsonValue };
 
-export type MaskType = 'brush' | 'radial' | 'linear';
+export type MaskType = 'brush' | 'radial' | 'linear' | 'semantic';
 export type NormalizedPoint = { x: number; y: number };
 export type MaskGeometry = {
   points?: NormalizedPoint[];
@@ -19,6 +19,8 @@ export type MaskGeometry = {
   radiusY?: number;
   start?: NormalizedPoint;
   end?: NormalizedPoint;
+  polygon?: NormalizedPoint[];
+  semanticLabel?: string;
 };
 export type MaskDefinition = {
   id: string;
@@ -111,6 +113,6 @@ export function createDocument(name = 'Untitled'): EditorDocument {
 }
 
 export function createMask(type: MaskType, name?: string): MaskDefinition {
-  const geometry: MaskGeometry = type === 'brush' ? { points: [], brushSize: .08 } : type === 'radial' ? { center: { x: .5, y: .5 }, radiusX: .3, radiusY: .3 } : { start: { x: .5, y: .2 }, end: { x: .5, y: .8 } };
-  return { id: createId('mask'), name: name ?? ({ brush: 'Cọ vùng chọn', radial: 'Vùng elip', linear: 'Dải chuyển sắc' }[type]), type, enabled: true, inverted: false, opacity: 1, feather: .25, geometry, adjustments: { ...INITIAL_ADJUSTMENTS } };
+  const geometry: MaskGeometry = type === 'brush' ? { points: [], brushSize: .08 } : type === 'radial' ? { center: { x: .5, y: .5 }, radiusX: .3, radiusY: .3 } : type === 'linear' ? { start: { x: .5, y: .2 }, end: { x: .5, y: .8 } } : { polygon: [] };
+  return { id: createId('mask'), name: name ?? ({ brush: 'Cọ vùng chọn', radial: 'Vùng elip', linear: 'Dải chuyển sắc', semantic: 'Vùng AI' }[type]), type, enabled: true, inverted: false, opacity: 1, feather: .25, geometry, adjustments: { ...INITIAL_ADJUSTMENTS } };
 }
