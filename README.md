@@ -1,6 +1,6 @@
 # openphoto
 
-Trình chỉnh sửa ảnh chạy trên trình duyệt, xây dựng bằng React, TypeScript và Tailwind CSS.
+Trình chỉnh sửa ảnh chạy trên trình duyệt, xây dựng bằng Next.js, React, TypeScript và Tailwind CSS.
 
 OpenPhoto sử dụng kiến trúc command-first: thao tác từ giao diện, preset và AI đều đi qua cùng một tool registry có schema. Ảnh gốc không bị ghi đè; lịch sử chỉ lưu transaction và tham số chỉnh sửa.
 
