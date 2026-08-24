@@ -18,6 +18,7 @@ OpenPhoto sử dụng kiến trúc command-first: thao tác từ giao diện, pr
 - AI có thể tạo mask qua `mask.create`, cập nhật qua `mask.update` và dùng mọi `adjust.*` với target mask
 - AI Vision thật qua Next.js API: gửi preview thu nhỏ, tạo `EditPlan`, preview và chỉ commit sau khi duyệt
 - Semantic mask dạng polygon chuẩn hóa cho subject, sky, background, face hoặc vùng AI nhận diện
+- `AiEditingHarness` tự tạo preview, đo luminance/clipping/RGB, gọi provider, validate plan và chạy thử qua editor engine
 - Project schema v2; project v1 được migrate tự động
 
 ## Chạy local
