@@ -2,6 +2,18 @@
 
 Trình chỉnh sửa ảnh chạy trên trình duyệt, xây dựng bằng React, TypeScript và Tailwind CSS.
 
+OpenPhoto sử dụng kiến trúc command-first: thao tác từ giao diện, preset và AI đều đi qua cùng một tool registry có schema. Ảnh gốc không bị ghi đè; lịch sử chỉ lưu transaction và tham số chỉnh sửa.
+
+## Nền tảng hiện có
+
+- 12 công cụ ánh sáng/màu có JSON Schema
+- WebGL2 renderer với Canvas 2D fallback
+- Transaction history, undo/redo và preview không commit
+- AI Tool Lab để thử `EditPlan` JSON trước khi kết nối API
+- Autosave project và ảnh nguồn trong IndexedDB
+- Xuất/nhập project JSON có `schemaVersion`
+- Xuất ảnh JPG đã render
+
 ## Chạy local
 
 ```bash
