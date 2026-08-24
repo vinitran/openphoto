@@ -20,6 +20,13 @@ describe('command dispatcher',()=>{
     const tx=await createTransaction(createDocument(),[command('adjust.shadows',20),command('adjust.vibrance',12)],'AI plan');
     expect(tx.after.adjustments.shadows).toBe(20); expect(tx.after.adjustments.vibrance).toBe(12); expect(tx.commands).toHaveLength(2);
   });
+  it('mọi adjustment có thể nhắm vào mask mà không đổi toàn ảnh',async()=>{
+    const document=createDocument('mask.jpg');
+    const created=await runCommands(document,[{...command('mask.create',0),parameters:{id:'mask_face',type:'radial'}}]);
+    const adjusted=await runCommands(created.document,[{...command('adjust.exposure',.4,'ai'),target:{type:'mask',id:'mask_face'}}]);
+    expect(adjusted.document.adjustments.exposure).toBe(0);
+    expect(adjusted.document.masks[0].adjustments.exposure).toBe(.4);
+  });
 });
 
 describe('AI plan và project',()=>{
@@ -30,5 +37,11 @@ describe('AI plan và project',()=>{
   it('round-trip project JSON giữ nguyên state và history',async()=>{
     const document=createDocument('photo.jpg'); const tx=await createTransaction(document,[command('adjust.temperature',15)],'Warm');
     const restored=parseProject(serializeProject(tx.after,[tx],0)); expect(restored.document).toEqual(tx.after); expect(restored.transactions[0].before).toEqual(document);
+  });
+  it('migrate project schema v1 sang document có mask schema v2',()=>{
+    const legacy=createDocument('legacy.jpg');
+    const input={kind:'openphoto-project',schemaVersion:1,document:{...legacy,schemaVersion:1,masks:undefined},transactions:[],historyIndex:-1};
+    const restored=parseProject(JSON.stringify(input));
+    expect(restored.schemaVersion).toBe(2);expect(restored.document.schemaVersion).toBe(2);expect(restored.document.masks).toEqual([]);
   });
 });

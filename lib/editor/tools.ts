@@ -1,4 +1,4 @@
-import { ADJUSTMENT_KEYS, AdjustmentKey, EditCommand, EditorDocument, ToolDefinition, ToolResult } from './types';
+import { ADJUSTMENT_KEYS, AdjustmentKey, EditCommand, EditorDocument, MaskDefinition, MaskType, ToolDefinition, ToolResult, createMask } from './types';
 
 export const CONTROL_DEFINITIONS: Record<AdjustmentKey, { label: string; min: number; max: number; step: number; unit: string; description: string }> = {
   exposure: { label: 'Phơi sáng', min: -2, max: 2, step: .05, unit: 'EV', description: 'Độ sáng tổng thể theo stop ánh sáng' },
@@ -17,7 +17,7 @@ export const CONTROL_DEFINITIONS: Record<AdjustmentKey, { label: string; min: nu
 
 function assertCommand(command: EditCommand, key: AdjustmentKey) {
   if (command.version !== 1) throw new Error('Phiên bản command không được hỗ trợ.');
-  if (command.target.type !== 'document') throw new Error('Công cụ này chỉ hỗ trợ document.');
+  if (command.target.type !== 'document' && command.target.type !== 'mask') throw new Error('Công cụ này chỉ hỗ trợ document hoặc mask.');
   const value = command.parameters.value;
   if (typeof value !== 'number' || !Number.isFinite(value)) throw new Error('Tham số value phải là số hữu hạn.');
   const definition = CONTROL_DEFINITIONS[key];
@@ -31,6 +31,12 @@ function createAdjustmentTool(key: AdjustmentKey): ToolDefinition {
   const apply = async (document: EditorDocument, command: EditCommand): Promise<ToolResult> => {
     assertCommand(command, key);
     const value = command.parameters.value as number;
+    if (command.target.type === 'mask') {
+      const index = document.masks.findIndex((mask) => mask.id === command.target.id);
+      if (index < 0) throw new Error(`Không tìm thấy mask “${command.target.id}”.`);
+      const masks = document.masks.map((mask, maskIndex) => maskIndex === index ? { ...mask, adjustments: { ...mask.adjustments, [key]: value } } : mask);
+      return { document: { ...document, masks, updatedAt: new Date().toISOString() }, description: `${definition.label} trên ${document.masks[index].name}: ${value > 0 ? '+' : ''}${value}` };
+    }
     return {
       document: { ...document, adjustments: { ...document.adjustments, [key]: value }, updatedAt: new Date().toISOString() },
       description: `${definition.label}: ${value > 0 ? '+' : ''}${value}${definition.unit === 'EV' ? ' EV' : ''}`,
@@ -50,6 +56,42 @@ export const TOOL_REGISTRY = new Map<string, ToolDefinition>(ADJUSTMENT_KEYS.map
   const tool = createAdjustmentTool(key);
   return [tool.name, tool];
 }));
+
+const maskCreate: ToolDefinition = {
+  name: 'mask.create', description: 'Tạo vùng chọn không phá hủy với tọa độ chuẩn hóa.',
+  inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'ID ổn định do AI hoặc UI cấp' }, type: { type: 'string', description: 'brush, radial hoặc linear' }, name: { type: 'string', description: 'Tên vùng chọn' } }, required: ['type'], additionalProperties: false },
+  preview: applyCreateMask, execute: applyCreateMask, describe: (command) => `Tạo mask ${command.parameters.type}`,
+};
+async function applyCreateMask(document: EditorDocument, command: EditCommand): Promise<ToolResult> {
+  if (command.target.type !== 'document') throw new Error('mask.create phải nhắm vào document.');
+  const type = command.parameters.type;
+  if (!['brush', 'radial', 'linear'].includes(String(type))) throw new Error('Mask type phải là brush, radial hoặc linear.');
+  const mask = createMask(type as MaskType, typeof command.parameters.name === 'string' ? command.parameters.name : undefined);
+  if (typeof command.parameters.id === 'string') mask.id = command.parameters.id;
+  return { document: { ...document, masks: [...document.masks, mask], updatedAt: new Date().toISOString() }, description: `Tạo ${mask.name}` };
+}
+
+const maskUpdate: ToolDefinition = {
+  name: 'mask.update', description: 'Cập nhật hình học, feather, opacity hoặc trạng thái mask.',
+  inputSchema: { type: 'object', properties: { name: { type: 'string' }, enabled: { type: 'boolean' }, inverted: { type: 'boolean' }, opacity: { type: 'number', minimum: 0, maximum: 1 }, feather: { type: 'number', minimum: 0, maximum: 1 }, geometry: { type: 'object', description: 'Hình học mask với tọa độ chuẩn hóa 0–1' } }, required: [], additionalProperties: false },
+  preview: applyUpdateMask, execute: applyUpdateMask, describe: () => 'Cập nhật vùng chọn',
+};
+async function applyUpdateMask(document: EditorDocument, command: EditCommand): Promise<ToolResult> {
+  if (command.target.type !== 'mask' || !command.target.id) throw new Error('mask.update cần target mask hợp lệ.');
+  const index = document.masks.findIndex((mask) => mask.id === command.target.id); if (index < 0) throw new Error(`Không tìm thấy mask “${command.target.id}”.`);
+  const current=document.masks[index]; const allowed=['name','enabled','inverted','opacity','feather','geometry']; const unknown=Object.keys(command.parameters).filter(key=>!allowed.includes(key)); if(unknown.length)throw new Error(`Tham số mask không hỗ trợ: ${unknown.join(', ')}`);
+  const next={...current,...command.parameters} as MaskDefinition;
+  if(next.opacity<0||next.opacity>1||next.feather<0||next.feather>1)throw new Error('Opacity và feather phải nằm trong 0–1.');
+  const masks=document.masks.map((mask,i)=>i===index?next:mask); return {document:{...document,masks,updatedAt:new Date().toISOString()},description:`Cập nhật ${next.name}`};
+}
+
+const maskDelete: ToolDefinition = {
+  name:'mask.delete',description:'Xóa một vùng chọn và các điều chỉnh liên quan.',inputSchema:{type:'object',properties:{},required:[],additionalProperties:false},
+  preview:applyDeleteMask,execute:applyDeleteMask,describe:()=> 'Xóa vùng chọn',
+};
+async function applyDeleteMask(document:EditorDocument,command:EditCommand):Promise<ToolResult>{if(command.target.type!=='mask'||!command.target.id)throw new Error('mask.delete cần target mask.');if(!document.masks.some(mask=>mask.id===command.target.id))throw new Error(`Không tìm thấy mask “${command.target.id}”.`);return{document:{...document,masks:document.masks.filter(mask=>mask.id!==command.target.id),updatedAt:new Date().toISOString()},description:'Đã xóa vùng chọn'};}
+
+TOOL_REGISTRY.set(maskCreate.name,maskCreate); TOOL_REGISTRY.set(maskUpdate.name,maskUpdate); TOOL_REGISTRY.set(maskDelete.name,maskDelete);
 
 export function listToolContracts() {
   return [...TOOL_REGISTRY.values()].map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));

@@ -14,3 +14,13 @@ button:disabled { cursor: not-allowed; }
 .adjustment-range::-moz-range-thumb { width:9px; height:9px; border:2px solid #17181b; border-radius:50%; background:#e7ff46; }
 ::-webkit-scrollbar { width:6px; }
 ::-webkit-scrollbar-thumb { border-radius:10px; background:rgb(255 255 255 / 10%); }
+
+.top-button { border:1px solid rgb(255 255 255 / 10%); border-radius:8px; padding:8px 12px; font-size:10px; color:rgb(255 255 255 / 68%); }
+.top-button:hover { background:rgb(255 255 255 / 5%); color:white; }
+.mask-list-item { display:flex; width:100%; align-items:center; gap:9px; border-radius:8px; padding:9px; font-size:10px; color:rgb(255 255 255 / 46%); text-align:left; }
+.mask-list-item:hover { background:rgb(255 255 255 / 4%); color:rgb(255 255 255 / 78%); }
+.mask-list-active { background:rgb(231 255 70 / 9%); color:#e7ff46; }
+.mask-add { border:1px solid rgb(255 255 255 / 9%); border-radius:7px; padding:7px 2px; font-size:9px; color:rgb(255 255 255 / 48%); }
+.mask-add:hover { border-color:rgb(231 255 70 / 35%); color:#e7ff46; }
+.mask-setting { margin-top:9px; display:flex; align-items:center; justify-content:space-between; font-size:9px; color:rgb(255 255 255 / 43%); }
+.mask-setting input { accent-color:#e7ff46; }

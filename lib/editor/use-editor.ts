@@ -6,7 +6,7 @@ import { loadProject, saveProject } from './persistence';
 
 export function useEditor(){
   const [document,setDocument]=useState<EditorDocument>(()=>createDocument()); const [transactions,setTransactions]=useState<Transaction[]>([]); const [historyIndex,setHistoryIndex]=useState(-1); const [ready,setReady]=useState(false); const imageBlob=useRef<Blob|undefined>(undefined); const imageName=useRef<string|undefined>(undefined);
-  useEffect(()=>{ loadProject().then((stored)=>{ if(stored){ setDocument(stored.project.document);setTransactions(stored.project.transactions);setHistoryIndex(stored.project.historyIndex);imageBlob.current=stored.image;imageName.current=stored.imageName; } }).finally(()=>setReady(true)); },[]);
+  useEffect(()=>{ loadProject().then((stored)=>{ if(stored){ setDocument(stored.project.document);setTransactions(stored.project.transactions);setHistoryIndex(stored.project.historyIndex);imageBlob.current=stored.image;imageName.current=stored.imageName; } }).catch(()=>undefined).finally(()=>setReady(true)); },[]);
   useEffect(()=>{ if(!ready)return; const timer=setTimeout(()=>saveProject(document,transactions,historyIndex,imageBlob.current,imageName.current),350); return()=>clearTimeout(timer); },[document,transactions,historyIndex,ready]);
   const dispatch=useCallback(async(commands:EditCommand[],label:string)=>{ const tx=await createTransaction(document,commands,label); const next=[...transactions.slice(0,historyIndex+1),tx];setTransactions(next);setHistoryIndex(next.length-1);setDocument(tx.after);return tx; },[document,transactions,historyIndex]);
   const preview=useCallback((commands:EditCommand[])=>runCommands(document,commands,'preview'),[document]);

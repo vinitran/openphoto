@@ -28,7 +28,8 @@ export function validatePlan(value: unknown): asserts value is EditPlan {
   if (!Array.isArray(plan.commands)) throw new Error('commands phải là một danh sách.');
   for (const command of plan.commands) {
     if (!command || command.version !== 1 || typeof command.id !== 'string' || typeof command.tool !== 'string') throw new Error('Command thiếu id, tool hoặc version=1.');
-    if (!['user', 'preset', 'ai'].includes(command.origin) || command.target?.type !== 'document' || !command.parameters || typeof command.parameters !== 'object') throw new Error(`Command ${command.id || ''} có origin, target hoặc parameters không hợp lệ.`);
+    const validTarget=command.target?.type==='document'||(command.target?.type==='mask'&&typeof command.target.id==='string');
+    if (!['user', 'preset', 'ai'].includes(command.origin) || !validTarget || !command.parameters || typeof command.parameters !== 'object') throw new Error(`Command ${command.id || ''} có origin, target hoặc parameters không hợp lệ.`);
   }
 }
 

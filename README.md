@@ -13,6 +13,10 @@ OpenPhoto sử dụng kiến trúc command-first: thao tác từ giao diện, pr
 - Autosave project và ảnh nguồn trong IndexedDB
 - Xuất/nhập project JSON có `schemaVersion`
 - Xuất ảnh JPG đã render
+- Mask engine nhiều vùng với brush, radial và linear gradient
+- Mỗi mask có đủ 12 thông số chỉnh sửa, feather, opacity, invert và bật/tắt
+- AI có thể tạo mask qua `mask.create`, cập nhật qua `mask.update` và dùng mọi `adjust.*` với target mask
+- Project schema v2; project v1 được migrate tự động
 
 ## Chạy local
 
