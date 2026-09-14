@@ -38,6 +38,14 @@ các thông số màu còn lại được giữ nguyên. Bản cũ vẫn có tro
 
 ## Chạy local
 
+Hiển thị ảnh: Vừa khung dùng kích thước viewport; 1:1 / 100% tương ứng một
+pixel ảnh trên một CSS pixel. Preview tăng độ phân giải theo zoom và mật độ màn
+hình, tối đa kích thước nguồn, cạnh 8192px và khoảng 24 megapixel. Ảnh lớn hơn
+cần tiled rendering để xem đủ chi tiết; hiện chưa có tính năng đó.
+Ảnh chưa chỉnh được vẽ trực tiếp qua Canvas sRGB. Ứng dụng chưa giải mã RAW
+máy ảnh (DNG/CR3/NEF/ARW...), chưa có camera profile hay pipeline RAW như Lightroom.
+Hãy xuất JPG/PNG sRGB từ phần mềm RAW trước khi mở.
+
 ```bash
 npm install
 npm run dev
