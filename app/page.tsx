@@ -48,6 +48,13 @@ export default function Home(){
   function endNavigation(){navigation.current=null;setNavigationMode(null);}
   function wheelNavigation(event:WheelEvent<HTMLElement>){if(!event.metaKey&&!event.ctrlKey)return;event.preventDefault();const rect=event.currentTarget.getBoundingClientRect(),px=event.clientX-rect.left-rect.width/2,py=event.clientY-rect.top-rect.height/2;setViewport(current=>{const zoom=Math.max(.1,Math.min(8,current.zoom*Math.exp(-event.deltaY*.002)));const ratio=zoom/current.zoom;return{zoom,x:px-(px-current.x)*ratio,y:py-(py-current.y)*ratio};});}
   function resetViewport(){setViewport({zoom:1,x:0,y:0});}
+  function stepZoom(direction:1|-1){
+    setViewport(current=>{
+      const zoom=Math.max(.1,Math.min(8,current.zoom*(direction===1?1.25:1/1.25)));
+      const ratio=zoom/current.zoom;
+      return{zoom,x:current.x*ratio,y:current.y*ratio};
+    });
+  }
   function drop(event:DragEvent){event.preventDefault();setDragging(false);selectImage(event.dataTransfer.files[0]);}
   const valueFor=(key:keyof Adjustments)=>draft?.[key]??activeAdjustments[key];
 
@@ -62,6 +69,11 @@ export default function Home(){
       {devOpen&&<DeveloperPanel onPreview={async plan=>{await previewPlan(plan)}} onApply={applyPlan} onApplyCommand={applySingle} onClose={()=>{setDevOpen(false);setPreviewDoc(null)}}/>}
       {aiOpen&&image&&<AiPanel key={editor.document.id} onSelectRegion={id=>{setSelectedMaskId(id);setShowOverlay(true);setDraft(null);setPreviewDoc(null);}} image={image} document={editor.document} onPreview={previewPlan} onApply={applyPlan} onClose={()=>{setAiOpen(false);setPreviewDoc(null)}}/>}
       {exportOpen&&image&&<ExportPanel image={image} document={editor.document} onClose={()=>setExportOpen(false)}/>}
-    </div>{notice&&<button onClick={()=>setNotice('')} className="absolute bottom-10 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-white/10 bg-[#222428] px-4 py-2 text-[10px] shadow-xl">{notice} · bấm để đóng</button>}<footer className="flex h-7 items-center justify-between border-t border-white/10 bg-[#17181b] px-4 text-[8px] text-white/25"><span>Mask engine · WebGL2 · autosave IndexedDB</span><span className="flex items-center gap-3"><button onClick={resetViewport} className="rounded bg-white/5 px-2 py-1 text-[#e7ff46]">{Math.round(viewport.zoom*100)}%</button><span>⌘/Ctrl + Space kéo: zoom · Space kéo: di chuyển · ⌘/Ctrl+0: vừa khung</span></span></footer><input ref={imageInput} type="file" accept="image/*" className="hidden" onChange={(e:ChangeEvent<HTMLInputElement>)=>selectImage(e.target.files?.[0])}/><input ref={projectInput} type="file" accept="application/json,.json" className="hidden" onChange={(e:ChangeEvent<HTMLInputElement>)=>importProject(e.target.files?.[0])}/>
+    </div>{notice&&<button onClick={()=>setNotice('')} className="absolute bottom-10 left-1/2 z-50 -translate-x-1/2 rounded-lg border border-white/10 bg-[#222428] px-4 py-2 text-[10px] shadow-xl">{notice} · bấm để đóng</button>}<footer className="flex h-12 shrink-0 items-center justify-between border-t border-white/10 bg-[#17181b] px-4 text-[8px] text-white/25"><span>Mask engine · WebGL2 · autosave IndexedDB</span><div className="flex items-center gap-3"><div role="group" aria-label="Điều khiển zoom ảnh" className="flex items-center gap-1">
+<button type="button" aria-label="Thu nhỏ ảnh" title="Thu nhỏ" disabled={!image||viewport.zoom<=.1} onClick={()=>stepZoom(-1)} className="h-8 w-8 rounded-lg border border-white/15 text-xl text-white/80 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-[#e7ff46] disabled:opacity-25">−</button>
+<output aria-label="Mức zoom so với vừa khung" className="min-w-14 text-center text-xs tabular-nums text-white/70">{Math.round(viewport.zoom*100)}%</output>
+<button type="button" aria-label="Phóng to ảnh" title="Phóng to" disabled={!image||viewport.zoom>=8} onClick={()=>stepZoom(1)} className="h-8 w-8 rounded-lg border border-white/15 text-xl text-white/80 hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-[#e7ff46] disabled:opacity-25">+</button>
+<button type="button" disabled={!image} onClick={resetViewport} title="Hiển thị toàn bộ ảnh" className="ml-2 h-8 rounded-lg bg-white/5 px-3 text-xs text-[#e7ff46] hover:bg-white/10 disabled:opacity-25">Vừa khung</button>
+</div><span>⌘/Ctrl + Space kéo: zoom · Space kéo: di chuyển · ⌘/Ctrl+0: vừa khung</span></div></footer><input ref={imageInput} type="file" accept="image/*" className="hidden" onChange={(e:ChangeEvent<HTMLInputElement>)=>selectImage(e.target.files?.[0])}/><input ref={projectInput} type="file" accept="application/json,.json" className="hidden" onChange={(e:ChangeEvent<HTMLInputElement>)=>importProject(e.target.files?.[0])}/>
   </main>;
 }
