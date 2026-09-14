@@ -68,8 +68,10 @@ async function applyCreateMask(document: EditorDocument, command: EditCommand): 
   if (!['brush', 'radial', 'linear', 'semantic'].includes(String(type))) throw new Error('Mask type không hợp lệ.');
   const mask = createMask(type as MaskType, typeof command.parameters.name === 'string' ? command.parameters.name : undefined);
   if (typeof command.parameters.id === 'string') mask.id = command.parameters.id;
+  if(document.masks.some(item=>item.id===mask.id))throw new Error('ID vùng chọn đã tồn tại.');
   if (command.parameters.geometry && typeof command.parameters.geometry === 'object' && !Array.isArray(command.parameters.geometry)) mask.geometry = command.parameters.geometry;
   if (typeof command.parameters.feather === 'number') mask.feather = Math.max(0, Math.min(1, command.parameters.feather));
+  if(mask.type==='semantic'&&(!Array.isArray(mask.geometry.polygon)||mask.geometry.polygon.length<3||mask.geometry.polygon.length>40||!mask.geometry.polygon.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1)))throw new Error('Polygon vùng chọn không hợp lệ.');
   return { document: { ...document, masks: [...document.masks, mask], updatedAt: new Date().toISOString() }, description: `Tạo ${mask.name}` };
 }
 
@@ -100,3 +102,17 @@ TOOL_REGISTRY.set('mask.createSemantic',{...maskCreate,name:'mask.createSemantic
 export function listToolContracts() {
   return [...TOOL_REGISTRY.values()].map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
 }
+
+async function applyClone(document: EditorDocument, command: EditCommand): Promise<ToolResult> {
+  const mask = document.masks.find(item => item.id === command.target.id);
+  if (command.target.type !== 'mask' || !mask) throw new Error('Chọn vùng người cần xóa trước.');
+  const { x, y } = command.parameters;
+  if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y) || Math.abs(x) > 1 || Math.abs(y) > 1 || (x === 0 && y === 0)) throw new Error('Chọn độ dịch nền hợp lệ, khác 0.');
+  if (Object.keys(command.parameters).some(key => !['x', 'y'].includes(key))) throw new Error('Tham số clone không hợp lệ.');
+  return { document: { ...document, masks: document.masks.map(item => item.id === mask.id ? { ...item, clone: { x, y } } : item), updatedAt: new Date().toISOString() }, description: `Clone nền vào ${mask.name}` };
+}
+TOOL_REGISTRY.set('retouch.clone', {
+  name: 'retouch.clone', description: 'Lấy nền tại tọa độ dịch x,y chuẩn hóa để che vùng đã chọn; ảnh gốc được giữ nguyên.',
+  inputSchema: { type: 'object', properties: { x: { type: 'number', minimum: -1, maximum: 1 }, y: { type: 'number', minimum: -1, maximum: 1 } }, required: ['x', 'y'], additionalProperties: false },
+  preview: applyClone, execute: applyClone, describe: () => 'Xóa bằng clone nền',
+});

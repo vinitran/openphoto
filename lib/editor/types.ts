@@ -32,6 +32,7 @@ export type MaskDefinition = {
   feather: number;
   geometry: MaskGeometry;
   adjustments: Adjustments;
+  clone?: { x: number; y: number };
 };
 
 export type EditCommand = {

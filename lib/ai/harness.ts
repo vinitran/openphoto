@@ -18,8 +18,10 @@ export class AiEditingHarness{
     onProgress?.({stage:'analyzing',message:'AI đang quan sát ảnh và lập kế hoạch…'});
     const response=await fetch('/api/ai/edit',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({prompt,image:prepared.image,analysis,document:{name:document.name,adjustments:document.adjustments,masks:document.masks.map(mask=>({id:mask.id,name:mask.name,type:mask.type}))}})});
     const data=await response.json() as {plan?:EditPlan;error?:string};if(!response.ok||!data.plan)throw new Error(data.error||'AI không trả về kế hoạch.');
+    signal.throwIfAborted();
     onProgress?.({stage:'validating',message:'Đang kiểm tra giới hạn và tham chiếu vùng…'});validatePlan(data.plan);
     onProgress?.({stage:'previewing',message:'Đang chạy thử kế hoạch bằng editor engine…'});const previewDocument=await preview(data.plan);
+    signal.throwIfAborted();
     onProgress?.({stage:'ready',message:`Đã tạo ${data.plan.commands.length} lệnh hợp lệ · chưa áp dụng.`});this.controller=null;
     return{plan:data.plan,analysis,preview:previewDocument};
   }

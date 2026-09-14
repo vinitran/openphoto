@@ -23,6 +23,19 @@ OpenPhoto sử dụng kiến trúc command-first: thao tác từ giao diện, pr
 
 ## Chạy local
 
+## Luồng AI theo vùng
+
+Mở ảnh sẽ mở trợ lý AI. Bấm gửi preview (tối đa 1280px) để nhận phân tích,
+chọn từng vùng hoặc toàn ảnh, xem thông số, xem trước rồi duyệt. Chỉ thông số
+và polygon được trả về; renderer local áp màu và giữ ảnh nguồn. Chọn vùng đã
+duyệt ở cột trái để tinh chỉnh thủ công.
+
+“Xóa người / clone nền” nằm dưới vùng đang chọn. Khoanh người bằng cọ hoặc
+dùng vùng AI, dịch nguồn ngang/dọc tới nền sạch, xem trước và duyệt.
+Clone được lưu bằng tọa độ chuẩn hóa trong transaction/project và dùng khi
+export. Đây là clone local, chưa phải AI inpainting; nền phức tạp và biên tóc
+cần chỉnh mask thủ công. Polygon AI cũng chỉ là vùng ước lượng.
+
 ```bash
 npm install
 npm run dev
