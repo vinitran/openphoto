@@ -3,6 +3,8 @@ import { ADJUSTMENT_KEYS, EditCommand, EditPlan, JsonValue, createId } from '@/l
 import { CONTROL_DEFINITIONS } from '@/lib/editor/tools';
 
 export const runtime = 'nodejs';
+// Leave headroom for validation/encoding beyond the upstream request deadline.
+export const maxDuration = 240;
 
 const responseSchema = {
   type: 'object', additionalProperties: false,
@@ -54,7 +56,7 @@ export async function POST(request: NextRequest) {
     if(typeof body.image!=='string'||!body.image.startsWith('data:image/')||body.image.length>8_000_000)return NextResponse.json({error:'Preview ảnh không hợp lệ hoặc quá lớn.'},{status:400});
     const toolSummary=ADJUSTMENT_KEYS.map(key=>`${key}: ${CONTROL_DEFINITIONS[key].min}..${CONTROL_DEFINITIONS[key].max} (${CONTROL_DEFINITIONS[key].description})`).join('\n');
     const baseUrl=(process.env.OPENAI_BASE_URL||'https://ai.hoanxu.com/v1').replace(/\/$/,'');
-    const response=await fetch(`${baseUrl}/responses`,{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(45_000),body:JSON.stringify({
+    const response=await fetch(`${baseUrl}/responses`,{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},signal:AbortSignal.any([request.signal,AbortSignal.timeout(180_000)]),body:JSON.stringify({
       model:process.env.OPENAI_MODEL||'cx/gpt-5.6-sol',store:false,
       instructions:`Bạn là chuyên gia chỉnh màu tự nhiên cho OpenPhoto. Chỉ trả thông số ánh sáng, màu sắc, hiệu ứng và vùng chọn; không xóa, clone, di chuyển, tái tạo đối tượng hoặc thay đổi bố cục.
 Phân biệt các vùng THỰC SỰ nhìn thấy: chủ thể, da mặt/da tay, tóc, quần áo, bầu trời, cây cối, mặt đất, hậu cảnh. Đặt tên tiếng Việt cụ thể theo vị trí để người dùng chọn đúng. Không bịa vùng không có trong ảnh. Tối đa 12 vùng và 100 lệnh.
@@ -65,13 +67,19 @@ targetId null là toàn ảnh; còn lại phải trùng id region. Giá trị ad
       input:[{role:'user',content:[{type:'input_text',text:`Yêu cầu: ${body.prompt}\nPhân tích pixel cục bộ: ${JSON.stringify(body.analysis)}\nTrạng thái chỉnh sửa hiện tại: ${JSON.stringify(body.document)}`},{type:'input_image',image_url:body.image,detail:'high'}]}],
       text:{format:{type:'json_schema',name:'openphoto_edit_plan',strict:true,schema:responseSchema}},
     })});
-    const data=await response.json() as {error?:{message?:string};output?:Array<{content?:Array<{type?:string;text?:string}>}>};
-    if(!response.ok)throw new Error(data.error?.message||'Dịch vụ AI từ chối yêu cầu.');
+    if(!response.ok){
+      const timeout=response.status===504||response.status===408;
+      return NextResponse.json({error:timeout?'Gateway AI hết thời gian chờ. Hãy thử lại sau.':`Gateway AI trả lỗi HTTP ${response.status}. Hãy thử lại sau.`,code:timeout?'GATEWAY_TIMEOUT':'GATEWAY_ERROR'},{status:timeout?504:502});
+    }
+    const data=await response.json() as {status?:string;error?:{message?:string};output?:Array<{content?:Array<{type?:string;text?:string}>}>};
+    if(data.status==='incomplete'||data.status==='failed')return NextResponse.json({error:'AI chưa hoàn thành kế hoạch. Hãy thử lại với yêu cầu ít vùng hơn.',code:'INCOMPLETE_PLAN'},{status:502});
     const text=data.output?.flatMap(item=>item.content||[]).find(item=>item.type==='output_text')?.text;
     if(!text)throw new Error('AI không trả về kế hoạch chỉnh sửa.');
     return NextResponse.json({plan:toPlan(JSON.parse(text) as AiResult)});
   } catch(error) {
-    const message=error instanceof Error?(error.name==='TimeoutError'?'AI phản hồi quá lâu. Hãy thử lại.':error.message):'Không thể phân tích ảnh.';
+    if(request.signal.aborted)return NextResponse.json({error:'Đã hủy phân tích.',code:'CANCELLED'},{status:499});
+    if(error instanceof Error&&error.name==='TimeoutError')return NextResponse.json({error:'AI chưa hoàn thành sau 180 giây. Gateway có thể đang bận; hãy thử lại hoặc yêu cầu ít vùng hơn.',code:'AI_TIMEOUT'},{status:504});
+    const message=error instanceof Error?error.message:'Không thể phân tích ảnh.';
     return NextResponse.json({error:message},{status:500});
   }
 }

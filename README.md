@@ -53,3 +53,8 @@ OPENAI_BASE_URL=https://ai.hoanxu.com/v1
 # Model có trong gateway HoanXu
 OPENAI_MODEL=cx/gpt-5.6-sol
 ```
+
+AI chờ gateway tối đa 180 giây; client chờ tối đa 210 giây và hiển thị thời gian
+đã chờ. Đóng bảng AI sẽ hủy request. Route khai báo maxDuration=240 giây;
+khi deploy cần bảo đảm hosting/reverse proxy cho phép thời gian xử lý tương ứng.
+Giới hạn từ gateway/hosting vẫn có thể kết thúc request sớm hơn.

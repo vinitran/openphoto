@@ -13,16 +13,27 @@ export class AiEditingHarness{
   private controller:AbortController|null=null;
   cancel(){this.controller?.abort();this.controller=null;}
   async process({image,prompt,document,preview,onProgress}:{image:HTMLImageElement;prompt:string;document:EditorDocument;preview:(plan:EditPlan)=>Promise<EditorDocument>;onProgress?:(progress:HarnessProgress)=>void}):Promise<HarnessResult>{
-    this.cancel();this.controller=new AbortController();const signal=this.controller.signal;
+    this.cancel();const controller=new AbortController();this.controller=controller;const signal=AbortSignal.any([controller.signal,AbortSignal.timeout(210_000)]);
+    const started=Date.now();
+    const timer=setInterval(()=>{if(!signal.aborted)onProgress?.({stage:'analyzing',message:`AI đang phân tích các vùng… ${Math.floor((Date.now()-started)/1000)} giây. Bạn có thể đóng bảng để hủy.`});},5000);
+    try{
     onProgress?.({stage:'preparing',message:'Đang tạo preview và đo ánh sáng…'});const prepared=prepareImage(image),analysis=analyzePixels(prepared.canvas);
     onProgress?.({stage:'analyzing',message:'AI đang quan sát ảnh và lập kế hoạch…'});
     const response=await fetch('/api/ai/edit',{method:'POST',headers:{'Content-Type':'application/json'},signal,body:JSON.stringify({prompt,image:prepared.image,analysis,document:{name:document.name,adjustments:document.adjustments,masks:document.masks.map(mask=>({id:mask.id,name:mask.name,type:mask.type}))}})});
-    const data=await response.json() as {plan?:EditPlan;error?:string};if(!response.ok||!data.plan)throw new Error(data.error||'AI không trả về kế hoạch.');
+    const data=await response.json().catch(()=>null) as {plan?:EditPlan;error?:string}|null;
+    if(!response.ok||!data?.plan)throw new Error(data?.error||(response.status===504?'Máy chủ/gateway hết thời gian chờ. Hãy thử lại sau.':`Không đọc được phản hồi AI (HTTP ${response.status}).`));
     signal.throwIfAborted();
     onProgress?.({stage:'validating',message:'Đang kiểm tra giới hạn và tham chiếu vùng…'});validatePlan(data.plan);
     onProgress?.({stage:'previewing',message:'Đang chạy thử kế hoạch bằng editor engine…'});const previewDocument=await preview(data.plan);
     signal.throwIfAborted();
-    onProgress?.({stage:'ready',message:`Đã tạo ${data.plan.commands.length} lệnh hợp lệ · chưa áp dụng.`});this.controller=null;
+    onProgress?.({stage:'ready',message:`Đã tạo ${data.plan.commands.length} lệnh hợp lệ · chưa áp dụng.`});
     return{plan:data.plan,analysis,preview:previewDocument};
+    }catch(error){
+      if(signal.aborted&&signal.reason?.name==='TimeoutError')throw new Error('Kết nối AI quá thời gian chờ. Hãy thử lại sau.');
+      throw error;
+    }finally{
+      clearInterval(timer);
+      if(this.controller===controller)this.controller=null;
+    }
   }
 }
