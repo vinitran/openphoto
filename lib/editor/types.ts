@@ -1,6 +1,6 @@
 export const ADJUSTMENT_KEYS = [
   'exposure', 'contrast', 'highlights', 'shadows', 'whites', 'blacks',
-  'temperature', 'tint', 'vibrance', 'saturation', 'clarity', 'vignette',
+  'temperature', 'tint', 'vibrance', 'saturation', 'clarity', 'vignette', 'blur', 'fade',
 ] as const;
 
 export type AdjustmentKey = (typeof ADJUSTMENT_KEYS)[number];
@@ -32,7 +32,6 @@ export type MaskDefinition = {
   feather: number;
   geometry: MaskGeometry;
   adjustments: Adjustments;
-  clone?: { x: number; y: number };
 };
 
 export type EditCommand = {
@@ -101,7 +100,7 @@ export type ProjectFile = {
 
 export const INITIAL_ADJUSTMENTS: Adjustments = {
   exposure: 0, contrast: 0, highlights: 0, shadows: 0, whites: 0, blacks: 0,
-  temperature: 0, tint: 0, vibrance: 0, saturation: 0, clarity: 0, vignette: 0,
+  temperature: 0, tint: 0, vibrance: 0, saturation: 0, clarity: 0, vignette: 0, blur: 0, fade: 0,
 };
 
 export function createId(prefix = 'op') {

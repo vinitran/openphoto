@@ -6,7 +6,7 @@ OpenPhoto sử dụng kiến trúc command-first: thao tác từ giao diện, pr
 
 ## Nền tảng hiện có
 
-- 12 công cụ ánh sáng/màu có JSON Schema
+- 14 công cụ ánh sáng/màu có JSON Schema
 - WebGL2 renderer với Canvas 2D fallback
 - Transaction history, undo/redo và preview không commit
 - AI Tool Lab để thử `EditPlan` JSON trước khi kết nối API
@@ -14,14 +14,12 @@ OpenPhoto sử dụng kiến trúc command-first: thao tác từ giao diện, pr
 - Xuất/nhập project JSON có `schemaVersion`
 - Xuất ảnh JPG đã render
 - Mask engine nhiều vùng với brush, radial và linear gradient
-- Mỗi mask có đủ 12 thông số chỉnh sửa, feather, opacity, invert và bật/tắt
+- Mỗi mask có đủ 14 thông số chỉnh sửa, feather, opacity, invert và bật/tắt
 - AI có thể tạo mask qua `mask.create`, cập nhật qua `mask.update` và dùng mọi `adjust.*` với target mask
 - AI Vision thật qua Next.js API: gửi preview thu nhỏ, tạo `EditPlan`, preview và chỉ commit sau khi duyệt
 - Semantic mask dạng polygon chuẩn hóa cho subject, sky, background, face hoặc vùng AI nhận diện
 - `AiEditingHarness` tự tạo preview, đo luminance/clipping/RGB, gọi provider, validate plan và chạy thử qua editor engine
 - Project schema v2; project v1 được migrate tự động
-
-## Chạy local
 
 ## Luồng AI theo vùng
 
@@ -30,11 +28,15 @@ chọn từng vùng hoặc toàn ảnh, xem thông số, xem trước rồi duy�
 và polygon được trả về; renderer local áp màu và giữ ảnh nguồn. Chọn vùng đã
 duyệt ở cột trái để tinh chỉnh thủ công.
 
-“Xóa người / clone nền” nằm dưới vùng đang chọn. Khoanh người bằng cọ hoặc
-dùng vùng AI, dịch nguồn ngang/dọc tới nền sạch, xem trước và duyệt.
-Clone được lưu bằng tọa độ chuẩn hóa trong transaction/project và dùng khi
-export. Đây là clone local, chưa phải AI inpainting; nền phức tạp và biên tóc
-cần chỉnh mask thủ công. Polygon AI cũng chỉ là vùng ước lượng.
+Vùng chọn hỗ trợ làm mờ (blur), màu matte (fade), sáng/tối, nhiệt độ,
+sắc độ, độ rực, bão hòa, clarity và vignette. Feather điều chỉnh biên mask;
+blur điều chỉnh nội dung ảnh. AI được hướng dẫn bảo vệ da, tóc và chi tiết chủ thể.
+Vùng nền có thể là polygon chủ thể đảo ngược. Polygon từ vision vẫn là ước lượng,
+chưa phải segmentation pixel; cần xem overlay trước khi duyệt.
+Không còn chức năng clone/xóa người. Project cũ bỏ qua dữ liệu clone khi nạp,
+các thông số màu còn lại được giữ nguyên. Bản cũ vẫn có trong lịch sử Git.
+
+## Chạy local
 
 ```bash
 npm install

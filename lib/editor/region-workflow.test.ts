@@ -19,20 +19,30 @@ describe('Region editing and non-destructive removal',()=>{
     expect(original.masks).toEqual([]);
     expect(selectPlanRegions(plan,[]).commands).toEqual([]);
   });
-  it('stores clone coordinates in a reversible transaction and round-trips project JSON',async()=>{
+  it('stores region blur and matte without altering global state, including project round-trip',async()=>{
     const before=(await runCommands(createDocument(),[create])).document;
-    const clone:EditCommand={...adjust,tool:'retouch.clone',parameters:{x:.15,y:0}};
-    const tx=await createTransaction(before,[clone],'Remove person');
-    expect(tx.before.masks[0].clone).toBeUndefined();
-    expect(tx.after.masks[0].clone).toEqual({x:.15,y:0});
+    const tx=await createTransaction(before,[{...adjust,tool:'adjust.blur',parameters:{value:20}},{...adjust,id:'matte',tool:'adjust.fade',parameters:{value:12}}],'Regional effects');
+    expect(tx.before.masks[0].adjustments.blur).toBe(0);
+    expect(tx.after.adjustments.blur).toBe(0);
+    expect(tx.after.masks[0].adjustments).toMatchObject({blur:20,fade:12});
     expect(parseProject(serializeProject(tx.after,[tx],0)).transactions[0]).toEqual(tx);
   });
-  it('rejects nonexistent masks and unsafe clone coordinates atomically',async()=>{
-    await expect(runCommands(createDocument(),[{...adjust,tool:'retouch.clone',parameters:{x:.2,y:0}}])).rejects.toThrow();
+  it('rejects removed clone tools and invalid regional effects',async()=>{
     const before=(await runCommands(createDocument(),[create])).document;
-    for(const x of [NaN,Infinity,2,0]){
-      await expect(runCommands(before,[{...adjust,tool:'retouch.clone',parameters:{x,y:0}}])).rejects.toThrow();
+    await expect(runCommands(before,[{...adjust,tool:'retouch.clone',parameters:{x:.2,y:0}}])).rejects.toThrow('chưa được đăng ký');
+    for(const value of [NaN,Infinity,-1,101]){
+      await expect(runCommands(before,[{...adjust,tool:'adjust.blur',parameters:{value}}])).rejects.toThrow();
     }
-    expect(before.masks[0].clone).toBeUndefined();
+  });
+  it('migrates old masks to zero effects and discards legacy clone state',()=>{
+    const doc=createDocument();
+    const mask={id:'old',type:'semantic',geometry:{polygon:[]},adjustments:{exposure:1},clone:{x:.2,y:0}};
+    const restored=parseProject(JSON.stringify({kind:'openphoto-project',schemaVersion:2,document:{...doc,masks:[mask]},transactions:[],historyIndex:-1}));
+    expect(restored.document.masks[0]).not.toHaveProperty('clone');
+    expect(restored.document.masks[0].adjustments).toMatchObject({blur:0,fade:0,exposure:1});
+  });
+  it('creates an inverted subject mask to select the surrounding background',async()=>{
+    const result=await runCommands(createDocument(),[{...create,parameters:{...create.parameters,inverted:true}}]);
+    expect(result.document.masks[0].inverted).toBe(true);
   });
 });

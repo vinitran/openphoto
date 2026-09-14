@@ -10,7 +10,7 @@ export function AiPanel({image,document,onPreview,onApply,onClose,onSelectRegion
   const harness=useRef(new AiEditingHarness());
   const mounted=useRef(true);
   useEffect(()=>{mounted.current=true;const runner=harness.current;return()=>{mounted.current=false;runner.cancel();}},[]);
-  const [prompt,setPrompt]=useState('Phân tích ánh sáng, màu sắc và các vùng trong ảnh. Đề xuất chỉnh màu tự nhiên, giữ nguyên khuôn mặt, kết cấu và bố cục. Nhận diện từng người trong nền để tôi có thể chọn xử lý.');
+  const [prompt,setPrompt]=useState('Phân tích ánh sáng, màu sắc và các vùng trong ảnh. Đề xuất chỉnh màu tự nhiên, giữ nguyên khuôn mặt, kết cấu và bố cục. Phân biệt da, chủ thể, quần áo, nền, bầu trời và cây cối nếu có. Đề xuất chỉnh riêng từng vùng; chỉ làm mờ nền nhẹ khi cần, bảo vệ chi tiết da.');
   const [plan,setPlan]=useState<EditPlan|null>(null),[selected,setSelected]=useState<string[]>([]),[busy,setBusy]=useState(false),[message,setMessage]=useState('Chỉ gửi preview thu nhỏ tới HoanXu để nhận thông số và vùng chọn. Ảnh gốc được giữ lại trên máy.');
   const [base,setBase]=useState(document);
   const stale=base!==document;
@@ -20,7 +20,7 @@ export function AiPanel({image,document,onPreview,onApply,onClose,onSelectRegion
     try{
       const result=await harness.current.process({image,prompt,document,preview:async value=>(await runCommands(document,value.commands,'preview')).document,onProgress:p=>{if(mounted.current)setMessage(p.message);}});
       if(!mounted.current)return;
-      setPlan(result.plan);setSelected([]);setMessage('Chọn vùng muốn chỉnh, xem thông số rồi bấm Xem trước. Các vùng AI khoanh là ước lượng, hãy kiểm tra biên.');
+      setPlan(result.plan);setSelected([]);setMessage('Chọn vùng muốn chỉnh, xem thông số rồi bấm Xem trước. Các vùng AI khoanh là ước lượng; kiểm tra biên trước khi làm mờ.');
     }catch(error){if(mounted.current)setMessage(error instanceof Error?error.message:'Không thể phân tích.');}finally{if(mounted.current)setBusy(false);}
   }
   async function action(apply:boolean){
@@ -49,7 +49,7 @@ export function AiPanel({image,document,onPreview,onApply,onClose,onSelectRegion
         <button disabled={busy||stale} onClick={()=>inspect(group.id)} className="mt-2 text-[10px] text-[#e7ff46]">Xem vùng trên ảnh</button>
         {plan.commands.filter(c=>c.tool.startsWith('adjust.')&&(c.target.id||'global')===group.id).map(c=><div key={c.id} className="mt-2 flex justify-between text-[10px] text-white/50"><span>{CONTROL_DEFINITIONS[c.tool.slice(7) as keyof typeof CONTROL_DEFINITIONS]?.label}</span><span>{String(c.parameters.value)}</span></div>)}
       </div>)}
-      <p className="text-[10px] text-white/40">Sau khi duyệt, chọn vùng ở cột trái để tinh chỉnh bằng slider hoặc dùng “Xóa người / clone nền”.</p></>}
+      <p className="text-[10px] text-white/40">Sau khi duyệt, chọn vùng ở cột trái để tinh chỉnh bằng slider và điều chỉnh làm mờ, màu matte, feather.</p></>}
     </div>
     <footer className="grid grid-cols-2 gap-2 border-t border-white/10 p-4"><button disabled={busy||stale||!selected.length} onClick={()=>action(false)} className="top-button disabled:opacity-30">Xem trước</button><button disabled={busy||stale||!selected.length} onClick={()=>action(true)} className="rounded-lg bg-[#e7ff46] p-2 text-xs text-black disabled:opacity-30">Duyệt vùng đã chọn</button></footer>
   </section>;

@@ -1,6 +1,8 @@
 import { ADJUSTMENT_KEYS, AdjustmentKey, EditCommand, EditorDocument, MaskDefinition, MaskType, ToolDefinition, ToolResult, createMask } from './types';
 
 export const CONTROL_DEFINITIONS: Record<AdjustmentKey, { label: string; min: number; max: number; step: number; unit: string; description: string }> = {
+  blur: { label: 'Làm mờ', min: 0, max: 100, step: 1, unit: '%', description: 'Làm mờ quang học mô phỏng; 100 tương ứng bán kính 2% cạnh ngắn. Nền dùng nhẹ 5–25, da mặc định 0.' },
+  fade: { label: 'Màu matte', min: 0, max: 100, step: 1, unit: '%', description: 'Nâng điểm đen và nén tương phản nhẹ để tạo màu matte. Mặc định 0; dùng tự nhiên 5–15.' },
   exposure: { label: 'Phơi sáng', min: -2, max: 2, step: .05, unit: 'EV', description: 'Độ sáng tổng thể theo stop ánh sáng' },
   contrast: { label: 'Tương phản', min: -100, max: 100, step: 1, unit: '%', description: 'Khoảng cách giữa vùng sáng và tối' },
   highlights: { label: 'Vùng sáng', min: -100, max: 100, step: 1, unit: '%', description: 'Độ sáng của vùng highlight' },
@@ -59,7 +61,7 @@ export const TOOL_REGISTRY = new Map<string, ToolDefinition>(ADJUSTMENT_KEYS.map
 
 const maskCreate: ToolDefinition = {
   name: 'mask.create', description: 'Tạo vùng chọn không phá hủy với tọa độ chuẩn hóa.',
-  inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'ID ổn định do AI hoặc UI cấp' }, type: { type: 'string', description: 'brush, radial, linear hoặc semantic' }, name: { type: 'string', description: 'Tên vùng chọn' }, geometry: { type: 'object', description: 'Hình học chuẩn hóa 0–1' }, feather: { type: 'number', minimum: 0, maximum: 1 } }, required: ['type'], additionalProperties: false },
+  inputSchema: { type: 'object', properties: { id: { type: 'string', description: 'ID ổn định do AI hoặc UI cấp' }, type: { type: 'string', description: 'brush, radial, linear hoặc semantic' }, name: { type: 'string', description: 'Tên vùng chọn' }, inverted: { type: 'boolean', description: 'Đảo polygon để chọn nền bên ngoài chủ thể' }, geometry: { type: 'object', description: 'Hình học chuẩn hóa 0–1' }, feather: { type: 'number', minimum: 0, maximum: 1 } }, required: ['type'], additionalProperties: false },
   preview: applyCreateMask, execute: applyCreateMask, describe: (command) => `Tạo mask ${command.parameters.type}`,
 };
 async function applyCreateMask(document: EditorDocument, command: EditCommand): Promise<ToolResult> {
@@ -71,6 +73,7 @@ async function applyCreateMask(document: EditorDocument, command: EditCommand): 
   if(document.masks.some(item=>item.id===mask.id))throw new Error('ID vùng chọn đã tồn tại.');
   if (command.parameters.geometry && typeof command.parameters.geometry === 'object' && !Array.isArray(command.parameters.geometry)) mask.geometry = command.parameters.geometry;
   if (typeof command.parameters.feather === 'number') mask.feather = Math.max(0, Math.min(1, command.parameters.feather));
+  if (typeof command.parameters.inverted === 'boolean') mask.inverted = command.parameters.inverted;
   if(mask.type==='semantic'&&(!Array.isArray(mask.geometry.polygon)||mask.geometry.polygon.length<3||mask.geometry.polygon.length>40||!mask.geometry.polygon.every(p=>p&&Number.isFinite(p.x)&&Number.isFinite(p.y)&&p.x>=0&&p.x<=1&&p.y>=0&&p.y<=1)))throw new Error('Polygon vùng chọn không hợp lệ.');
   return { document: { ...document, masks: [...document.masks, mask], updatedAt: new Date().toISOString() }, description: `Tạo ${mask.name}` };
 }
@@ -102,17 +105,3 @@ TOOL_REGISTRY.set('mask.createSemantic',{...maskCreate,name:'mask.createSemantic
 export function listToolContracts() {
   return [...TOOL_REGISTRY.values()].map(({ name, description, inputSchema }) => ({ name, description, inputSchema }));
 }
-
-async function applyClone(document: EditorDocument, command: EditCommand): Promise<ToolResult> {
-  const mask = document.masks.find(item => item.id === command.target.id);
-  if (command.target.type !== 'mask' || !mask) throw new Error('Chọn vùng người cần xóa trước.');
-  const { x, y } = command.parameters;
-  if (typeof x !== 'number' || typeof y !== 'number' || !Number.isFinite(x) || !Number.isFinite(y) || Math.abs(x) > 1 || Math.abs(y) > 1 || (x === 0 && y === 0)) throw new Error('Chọn độ dịch nền hợp lệ, khác 0.');
-  if (Object.keys(command.parameters).some(key => !['x', 'y'].includes(key))) throw new Error('Tham số clone không hợp lệ.');
-  return { document: { ...document, masks: document.masks.map(item => item.id === mask.id ? { ...item, clone: { x, y } } : item), updatedAt: new Date().toISOString() }, description: `Clone nền vào ${mask.name}` };
-}
-TOOL_REGISTRY.set('retouch.clone', {
-  name: 'retouch.clone', description: 'Lấy nền tại tọa độ dịch x,y chuẩn hóa để che vùng đã chọn; ảnh gốc được giữ nguyên.',
-  inputSchema: { type: 'object', properties: { x: { type: 'number', minimum: -1, maximum: 1 }, y: { type: 'number', minimum: -1, maximum: 1 } }, required: ['x', 'y'], additionalProperties: false },
-  preview: applyClone, execute: applyClone, describe: () => 'Xóa bằng clone nền',
-});
