@@ -45,8 +45,9 @@ export async function POST(request: NextRequest) {
     if(typeof body.prompt!=='string'||!body.prompt.trim()||body.prompt.length>2000)return NextResponse.json({error:'Yêu cầu phải dài từ 1–2000 ký tự.'},{status:400});
     if(typeof body.image!=='string'||!body.image.startsWith('data:image/')||body.image.length>8_000_000)return NextResponse.json({error:'Preview ảnh không hợp lệ hoặc quá lớn.'},{status:400});
     const toolSummary=ADJUSTMENT_KEYS.map(key=>`${key}: ${CONTROL_DEFINITIONS[key].min}..${CONTROL_DEFINITIONS[key].max} (${CONTROL_DEFINITIONS[key].description})`).join('\n');
-    const response=await fetch('https://api.openai.com/v1/responses',{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(45_000),body:JSON.stringify({
-      model:process.env.OPENAI_MODEL||'gpt-4o',store:false,
+    const baseUrl=(process.env.OPENAI_BASE_URL||'https://ai.hoanxu.com/v1').replace(/\/$/,'');
+    const response=await fetch(`${baseUrl}/responses`,{method:'POST',headers:{Authorization:`Bearer ${apiKey}`,'Content-Type':'application/json'},signal:AbortSignal.timeout(45_000),body:JSON.stringify({
+      model:process.env.OPENAI_MODEL||'cx/gpt-5.6-luna',store:false,
       instructions:`Bạn là chuyên gia chỉnh màu ảnh cho OpenPhoto. Phân tích ảnh và tạo kế hoạch tinh tế, tự nhiên. Chỉ tạo region khi một vùng thật sự cần chỉnh khác toàn ảnh. Polygon dùng tọa độ chuẩn hóa 0–1, bám sát đối tượng nhưng tối đa 40 điểm. targetId null nghĩa là toàn ảnh; nếu có phải trùng id region. Không chỉnh quá tay. Công cụ:\n${toolSummary}`,
       input:[{role:'user',content:[{type:'input_text',text:`Yêu cầu: ${body.prompt}\nPhân tích pixel cục bộ: ${JSON.stringify(body.analysis)}\nTrạng thái chỉnh sửa hiện tại: ${JSON.stringify(body.document)}`},{type:'input_image',image_url:body.image,detail:'high'}]}],
       text:{format:{type:'json_schema',name:'openphoto_edit_plan',strict:true,schema:responseSchema}},

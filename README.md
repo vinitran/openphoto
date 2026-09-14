@@ -34,6 +34,7 @@ Tạo `.env.local` để bật AI:
 
 ```bash
 OPENAI_API_KEY=your_api_key
-# Tùy chọn, mặc định là gpt-4o
-OPENAI_MODEL=gpt-4o
+OPENAI_BASE_URL=https://ai.hoanxu.com/v1
+# Model có trong gateway HoanXu
+OPENAI_MODEL=cx/gpt-5.6-luna
 ```
