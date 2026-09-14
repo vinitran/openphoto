@@ -36,5 +36,5 @@ Tạo `.env.local` để bật AI:
 OPENAI_API_KEY=your_api_key
 OPENAI_BASE_URL=https://ai.hoanxu.com/v1
 # Model có trong gateway HoanXu
-OPENAI_MODEL=cx/gpt-5.6-luna
+OPENAI_MODEL=cx/gpt-5.6-sol
 ```
